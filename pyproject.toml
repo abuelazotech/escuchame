@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "control-voz"
+version = "0.1.0"
+description = "Control por voz y dictado para Linux Mint Cinnamon"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [{name = "Angelino Santana (El Abuelazo Tech)"}]
+dependencies = []
+
+[project.scripts]
+control-voz = "control_voz.app:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]

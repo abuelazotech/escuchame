@@ -1,0 +1,17 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+dist/
+build/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.DS_Store
+*~
+*.bak
+paquete_control_voz/usr/
+debian/.debhelper/
+debian/files
+debian/control-voz*

@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=Control por Voz
+Comment=Control por voz y dictado para Linux Mint
+Exec=control-voz
+Icon=control-voz
+Terminal=false
+Type=Application
+Categories=Utility;
+Keywords=voz;dictado;comandos;microfono;accessibility;
+StartupNotify=false
+X-GNOME-Autostart-enabled=true

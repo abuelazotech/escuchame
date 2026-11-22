@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>com.elabuelazotech.controlvoz.desktop</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+  <name>Control por Voz</name>
+  <summary>Control por voz y dictado para Linux Mint Cinnamon</summary>
+  <description>
+    <p>Aplicación con indicador en la bandeja del panel para activar control por voz, dictado o apagar el micrófono.</p>
+  </description>
+  <developer id="com.elabuelazotech">
+    <name>Angelino Santana (El Abuelazo Tech)</name>
+  </developer>
+  <url type="homepage">https://github.com/abuelazotech/control-voz</url>
+  <launchable type="desktop-id">control-voz.desktop</launchable>
+  <provides><binary>control-voz</binary></provides>
+  <categories>
+    <category>Utility</category>
+    <category>Accessibility</category>
+  </categories>
+  <content_rating type="oars-1.1"/>
+</component>
