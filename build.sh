@@ -7,7 +7,7 @@ cd "$RAIZ"
 VERSION="$(python3 -c 'import tomllib; print(tomllib.load(open("pyproject.toml","rb"))["project"]["version"])')"
 DIST="$RAIZ/dist"
 PKG="$RAIZ/paquete_control_voz"
-rm -rf "$DIST" "$PKG/usr"
+rm -rf "${DIST:?}" "${PKG:?}/usr"
 mkdir -p "$DIST" "$PKG/DEBIAN" "$PKG/usr/bin" "$PKG/usr/share/control-voz" "$PKG/usr/share/applications" "$PKG/usr/share/icons/hicolor/scalable/apps" "$PKG/usr/share/doc/control-voz" "$PKG/usr/share/man/man1" "$PKG/usr/share/metainfo"
 
 cp -r src/control_voz "$PKG/usr/share/control-voz/"

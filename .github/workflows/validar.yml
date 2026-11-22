@@ -1,0 +1,31 @@
+name: Validar
+
+on: [push, pull_request]
+
+jobs:
+  validar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Obtener código
+        uses: actions/checkout@v4
+      - name: Instalar herramientas
+        run: sudo apt-get update && sudo apt-get install -y shellcheck desktop-file-utils lintian appstream python3
+      - name: Verificar sintaxis
+        run: |
+          bash -n build.sh
+          shellcheck -s bash -S warning build.sh
+          python3 -m py_compile src/control_voz/*.py
+      - name: Validar metadatos
+        run: |
+          desktop-file-validate assets/control-voz.desktop
+          appstreamcli validate --no-net assets/control-voz.appdata.xml
+      - name: Ejecutar pruebas
+        env:
+          PYTHONPATH: src
+        run: python3 -m unittest discover -s tests
+      - name: Habilitar construcción
+        run: chmod +x build.sh
+      - name: Construir paquete
+        run: ./build.sh
+      - name: Verificar paquete con lintian
+        run: lintian --fail-on warning --pedantic dist/control-voz_$(python3 -c 'import tomllib;print(tomllib.load(open("pyproject.toml","rb"))["project"]["version"])')_all.deb
