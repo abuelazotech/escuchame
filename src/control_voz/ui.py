@@ -15,6 +15,7 @@ except Exception:
 from gi.repository import Gio, GLib, Gtk, XApp  # type: ignore
 
 from .config import APP_NAME, DEFAULT_MODEL, ensure_config, save_config
+from .corrections import load_corrections, normalize_text, save_corrections
 from .engine import EngineEvent, VoiceEngine
 
 
@@ -189,6 +190,7 @@ class SettingsWindow(Gtk.Window):
         nb.append_page(self._help_dictionary_page(), Gtk.Label(label="Ayuda: diccionario"))
         nb.append_page(self._commands_page(), Gtk.Label(label="Comandos"))
         nb.append_page(self._dict_page(), Gtk.Label(label="Diccionario"))
+        nb.append_page(self._corrections_page(), Gtk.Label(label="Correcciones"))
         nb.append_page(self._general_page(), Gtk.Label(label="General"))
 
     def _help_text_page(self, text: str):
@@ -260,7 +262,9 @@ class SettingsWindow(Gtk.Window):
 5. La corrección se guarda en <i>~/.config/control-voz/correcciones.txt</i> y se aplica enseguida: no hace falta reiniciar ni volver a pulsar <b>Guardar</b>.
 6. Di otra vez la frase original: ahora debe reconocerse como la corregida.
 7. Si te equivocaste, di otra corrección con el mismo texto mal; la nueva reemplaza a la anterior.
-8. También puedes editar el archivo a mano, una corrección por línea, con el formato
+8. También puedes abrir <b>Configuración → Correcciones</b>, escribir las dos frases y pulsar
+   <b>Añadir corrección</b> y luego <b>Guardar correcciones</b>. Reinicia Escúchame para aplicarlas.
+9. Otra opción es editar el archivo a mano, una corrección por línea, con el formato
    <i>lo que oyó => lo correcto</i>. Esos cambios se cargan al reiniciar Escúchame.
 
 <b>3. Corregir el dictado</b>
@@ -367,6 +371,74 @@ class SettingsWindow(Gtk.Window):
             b = Gtk.Button(label=label); b.connect("clicked", cb); btns.pack_start(b, False, False, 0)
         box.pack_start(btns, False, False, 0)
         return box
+
+    def _corrections_page(self):
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8, border_width=10)
+        self.correction_store = Gtk.ListStore(str, str)
+        for wrong, right in sorted(load_corrections().items()):
+            self.correction_store.append([wrong, right])
+        tree = Gtk.TreeView(model=self.correction_store)
+        for title, column in (("Lo que oyó", 0), ("Frase correcta", 1)):
+            rend = Gtk.CellRendererText(editable=True)
+            rend.connect("edited", self._edited_correction, column)
+            tree.append_column(Gtk.TreeViewColumn(title, rend, text=column))
+        sw = Gtk.ScrolledWindow(); sw.add(tree)
+        box.pack_start(sw, True, True, 0)
+
+        form = Gtk.Grid(column_spacing=6, row_spacing=6)
+        form.attach(Gtk.Label(label="Frase que oyó Vosk", xalign=0), 0, 0, 1, 1)
+        self.correction_wrong = Gtk.Entry()
+        form.attach(self.correction_wrong, 1, 0, 1, 1)
+        form.attach(Gtk.Label(label="Frase correcta", xalign=0), 0, 1, 1, 1)
+        self.correction_right = Gtk.Entry()
+        form.attach(self.correction_right, 1, 1, 1, 1)
+        box.pack_start(form, False, False, 0)
+
+        btns = Gtk.Box(spacing=6)
+        for label, cb in [
+            ("Añadir corrección", self._add_correction),
+            ("Eliminar", lambda *_: self._del_row(tree, self.correction_store)),
+            ("Guardar correcciones", self._persist_corrections),
+        ]:
+            b = Gtk.Button(label=label); b.connect("clicked", cb); btns.pack_start(b, False, False, 0)
+        box.pack_start(btns, False, False, 0)
+
+        info = Gtk.Label(
+            label="También puedes decir «corregir lo que oyó es la frase correcta». "
+                  "Los cambios desde esta pestaña se aplican al reiniciar Escúchame.",
+            xalign=0,
+        )
+        info.set_line_wrap(True)
+        box.pack_start(info, False, False, 0)
+        return box
+
+    def _add_correction(self, *_):
+        wrong = self.correction_wrong.get_text().strip()
+        right = self.correction_right.get_text().strip()
+        if not wrong or not right:
+            return
+        key = normalize_text(wrong)
+        for row in self.correction_store:
+            if normalize_text(row[0]) == key:
+                row[1] = right
+                break
+        else:
+            self.correction_store.append([wrong, right])
+        self.correction_wrong.set_text("")
+        self.correction_right.set_text("")
+
+    def _edited_correction(self, _renderer, path, new_text, column):
+        row = self.correction_store.get_iter(path)
+        self.correction_store.set_value(row, column, new_text)
+
+    def _persist_corrections(self, *_):
+        corrections = {}
+        for row in self.correction_store:
+            wrong = str(row[0]).strip()
+            right = str(row[1]).strip()
+            if wrong and right:
+                corrections[normalize_text(wrong)] = right
+        save_corrections(corrections)
 
     def _general_page(self):
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8, border_width=10)
@@ -681,6 +753,7 @@ class SettingsWindow(Gtk.Window):
         self.config["autostart"] = self.autostart_check.get_active()
         self.config["wake_word_enabled"] = self.wake_check.get_active()
         self.config["start_off"] = self.start_off_check.get_active()
+        self._persist_corrections()
         self._apply_autostart(self.config["autostart"])
         self.on_save(self.config)
         self.destroy()
@@ -690,6 +763,8 @@ class SettingsWindow(Gtk.Window):
         autostart = Path.home() / ".config" / "autostart" / "control-voz.desktop"
         autostart.parent.mkdir(parents=True, exist_ok=True)
         if enabled:
+            if autostart.exists():
+                return
             src = Path("/usr/share/applications/control-voz.desktop")
             if src.exists():
                 autostart.write_text(src.read_text(encoding="utf-8"), encoding="utf-8")
