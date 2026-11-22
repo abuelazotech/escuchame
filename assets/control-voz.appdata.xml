@@ -11,7 +11,7 @@
   <developer id="com.elabuelazotech">
     <name>Angelino Santana (El Abuelazo Tech)</name>
   </developer>
-  <url type="homepage">https://github.com/abuelazotech/control-voz</url>
+  <url type="homepage">https://github.com/abuelazotech/escuchame</url>
   <launchable type="desktop-id">control-voz.desktop</launchable>
   <provides><binary>control-voz</binary></provides>
   <categories>

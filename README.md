@@ -1,6 +1,10 @@
-# Control por Voz
+# Escúchame
+
+![Escúchame](assets/escuchame-512.png)
 
 Aplicación para Linux Mint Cinnamon que permite controlar el escritorio por voz y usar dictado, con indicador permanente en la bandeja del panel.
+
+Repositorio: https://github.com/abuelazotech/escuchame
 
 ## Estados
 
