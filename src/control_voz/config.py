@@ -14,6 +14,8 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "model_path": DEFAULT_MODEL,
     "hotkey": DEFAULT_HOTKEY,
     "state": "off",  # off | command | dictation
+    "start_off": True,
+    "wake_word_enabled": True,
     "autostart": False,
     "show_notifications": True,
     "microphone_source": "",

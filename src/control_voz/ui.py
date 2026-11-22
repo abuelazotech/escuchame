@@ -25,21 +25,58 @@ STATE_LABELS = {
 }
 
 STATE_ICONS = {
-    "off": "microphone-sensitivity-muted-symbolic",
+    "off": "control-voz-off",
     "command": "control-voz-command",
     "dictation": "control-voz-dictation",
 }
 
 
+class ListeningPopup(Gtk.Window):
+    def __init__(self):
+        super().__init__(title=APP_NAME, type=Gtk.WindowType.POPUP)
+        self.set_decorated(False)
+        self.set_keep_above(True)
+        self.set_skip_taskbar_hint(True)
+        self.set_skip_pager_hint(True)
+        self.set_accept_focus(False)
+        self.set_focus_on_map(False)
+        self.set_position(Gtk.WindowPosition.CENTER)
+        self.set_default_size(260, 80)
+        self.set_opacity(0.94)
+
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4, border_width=16)
+        self.label = Gtk.Label()
+        box.pack_start(self.label, True, True, 0)
+        self.add(box)
+        self._timeout = None
+
+    def show_message(self, text: str, seconds: int) -> None:
+        self.label.set_markup(f"<b><big>{text}</big></b>")
+        self.show_all()
+        if self._timeout is not None:
+            GLib.source_remove(self._timeout)
+            self._timeout = None
+        self._timeout = GLib.timeout_add_seconds(seconds, self._hide)
+
+    def _hide(self) -> bool:
+        self.hide()
+        self._timeout = None
+        return False
+
+
 class ControlVozApp:
     def __init__(self):
         self.config = ensure_config()
+        start_off = bool(self.config.get("start_off", True))
+        if start_off:
+            self.config["state"] = "off"
         self.engine = VoiceEngine(self.config, self._on_engine_event)
+        self.popup = ListeningPopup()
         self.indicator = XApp.StatusIcon()
         self.indicator.set_name("control-voz")
         self.indicator.set_tooltip_text(APP_NAME)
         self._build_menu()
-        self._apply_state(self.config.get("state", "off"), save=False)
+        self._apply_state(self.config.get("state", "off"), save=start_off)
         self.engine.start()
         self._bind_hotkey()
         GLib.timeout_add(500, self._refresh_tooltip)
@@ -109,6 +146,10 @@ class ControlVozApp:
             GLib.idle_add(self._apply_state, event.text, True)
         elif event.kind == "error":
             GLib.idle_add(self.indicator.set_tooltip_text, f"{APP_NAME}: {event.text}")
+        elif event.kind == "wake":
+            GLib.idle_add(self.popup.show_message, "Escuchando...", 3)
+        elif event.kind == "sleep":
+            GLib.idle_add(self.popup.show_message, "En silencio...", 2)
 
     def _refresh_tooltip(self):
         state = self.config.get("state", "off")
@@ -129,6 +170,7 @@ class ControlVozApp:
 
     def quit(self):
         try:
+            self.popup.hide()
             self.engine.stop()
         finally:
             Gtk.main_quit()
@@ -143,14 +185,28 @@ class SettingsWindow(Gtk.Window):
 
         nb = Gtk.Notebook()
         self.add(nb)
-        nb.append_page(self._help_page(), Gtk.Label(label="Ayuda"))
+        nb.append_page(self._help_commands_page(), Gtk.Label(label="Ayuda: comandos"))
+        nb.append_page(self._help_dictionary_page(), Gtk.Label(label="Ayuda: diccionario"))
         nb.append_page(self._commands_page(), Gtk.Label(label="Comandos"))
         nb.append_page(self._dict_page(), Gtk.Label(label="Diccionario"))
         nb.append_page(self._general_page(), Gtk.Label(label="General"))
 
-    def _help_page(self):
+    def _help_text_page(self, text: str):
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8, border_width=14)
-        text = """<b>Guía rápida de Control por Voz</b>
+        label = Gtk.Label()
+        label.set_markup(text)
+        label.set_line_wrap(True)
+        label.set_xalign(0)
+        label.set_yalign(0)
+        label.set_selectable(True)
+        sw = Gtk.ScrolledWindow()
+        sw.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
+        sw.add(label)
+        box.pack_start(sw, True, True, 0)
+        return box
+
+    def _help_commands_page(self):
+        return self._help_text_page("""<b>Ayuda: comandos</b>
 
 <b>1. Añadir un comando de voz</b>
 1. Haz clic en el icono del panel y elige <b>Configuración...</b>.
@@ -170,32 +226,54 @@ class SettingsWindow(Gtk.Window):
 4. En <b>Frase para activarla</b> escribe lo que dirás, por ejemplo <i>abrir OBS</i>.
 5. Pulsa <b>Añadir a la lista</b> y, al terminar, <b>Guardar</b>.
 
-<b>3. Añadir una palabra al diccionario</b>
-1. Abre la pestaña <b>Diccionario</b> y pulsa <b>Añadir</b>.
-2. Escribe la palabra o frase tal como suena, por ejemplo <i>Diario del Abuelazo</i>.
-3. Pulsa <b>Guardar</b>. Así el reconocimiento la entenderá mejor.
-
-<b>4. Cambiar de estado</b>
-Di <i>modo dictado</i>, <i>modo comando</i> o <i>apagar control</i>, o usa el icono del panel.
-La tecla rápida por defecto es <b>Super+Alt+V</b>.
+<b>3. Activar, desactivar y dictar</b>
+1. Escúchame arranca siempre desactivado (gris).
+2. Di <i>escúchame</i>: se activa el modo comando y aparece «Escuchando...» durante 3 segundos.
+3. Di <i>ensordece</i> para volver a apagarlo, tanto desde comando como desde dictado; aparece «En silencio...».
+4. Desde el modo comando di <i>modo dictado</i> para escribir lo que digas, y <i>modo comando</i> para volver.
+5. También puedes usar el icono del panel, la tecla <b>Super+Alt+V</b> o la frase <i>apagar control</i>.
+6. En <b>General</b> puedes desactivar el escucha-permanente y el arranque desactivado.
 
 <b>Consejos</b>
 - Usa frases cortas y diferentes entre sí.
 - Escribe las palabras como las pronuncias, en minúsculas.
+- Si un comando no salta, revisa la frase en la pestaña <b>Comandos</b> o corrígela desde <b>Ayuda: diccionario</b>.
 - Si cuesta entenderte, revisa el modelo Vosk y el micrófono en <b>General</b>.
 - Los cambios solo se aplican después de pulsar <b>Guardar</b>.
-"""
-        label = Gtk.Label()
-        label.set_markup(text)
-        label.set_line_wrap(True)
-        label.set_xalign(0)
-        label.set_yalign(0)
-        label.set_selectable(True)
-        sw = Gtk.ScrolledWindow()
-        sw.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
-        sw.add(label)
-        box.pack_start(sw, True, True, 0)
-        return box
+""")
+
+    def _help_dictionary_page(self):
+        return self._help_text_page("""<b>Ayuda: diccionario y correcciones</b>
+
+<b>1. Añadir una palabra al diccionario</b>
+1. Abre la pestaña <b>Diccionario</b> y pulsa <b>Añadir</b>.
+2. Escribe la palabra o frase tal como suena, por ejemplo <i>Diario del Abuelazo</i>.
+3. Pulsa <b>Guardar</b>. Así el reconocimiento la entenderá mejor.
+
+<b>2. Corregir una frase que Vosk entiende mal</b>
+1. Activa <b>Control activo</b> desde el icono del panel (o di <i>modo comando</i>).
+2. Mira <i>~/.config/control-voz/no-reconocido.txt</i>: ahí se acumulan las frases que no encajaron con ningún comando.
+3. Di <i>corregir</i>, la frase tal como la oyó Vosk, la palabra <i>es</i> y al final la frase correcta.
+   Ejemplo: si entiende <i>abrir cadenlai</i> y tú quieres <i>abrir kdenlive</i>, di:
+   <i>corregir abrir cadenlai es abrir kdenlive</i>.
+4. También funcionan <i>corrige abrir cadenlai con abrir kdenlive</i> y <i>corrige abrir cadenlai por abrir kdenlive</i>.
+5. La corrección se guarda en <i>~/.config/control-voz/correcciones.txt</i> y se aplica enseguida: no hace falta reiniciar ni volver a pulsar <b>Guardar</b>.
+6. Di otra vez la frase original: ahora debe reconocerse como la corregida.
+7. Si te equivocaste, di otra corrección con el mismo texto mal; la nueva reemplaza a la anterior.
+8. También puedes editar el archivo a mano, una corrección por línea, con el formato
+   <i>lo que oyó => lo correcto</i>. Esos cambios se cargan al reiniciar Escúchame.
+
+<b>3. Corregir el dictado</b>
+- Las correcciones también se aplican a lo que se escribe al dictar.
+- Solo se cambia la parte corregida: se conservan mayúsculas, tildes y signos del resto del texto.
+- La palabra corregida se escribe tal como la dijiste en el paso 3.
+
+<b>Consejos</b>
+- Corrige lo mínimo, por ejemplo <i>cadenlai</i>, en vez de frases largas.
+- Para nombres de aplicaciones, a veces basta con añadir la frase mal dicha en la pestaña <b>Comandos</b>.
+- «escúchame» y «ensordece» se reconocen también al dictar y no se escriben en el texto.
+- Si cuesta entenderte, revisa el modelo Vosk y el micrófono en <b>General</b>.
+""")
 
     def _commands_page(self):
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8, border_width=10)
@@ -330,12 +408,21 @@ La tecla rápida por defecto es <b>Super+Alt+V</b>.
         self.autostart_check.set_active(bool(self.config.get("autostart", False)))
         box.pack_start(self.autostart_check, False, False, 0)
 
+        self.wake_check = Gtk.CheckButton(label="Escuchar siempre «escúchame» / «ensordece»")
+        self.wake_check.set_active(bool(self.config.get("wake_word_enabled", True)))
+        box.pack_start(self.wake_check, False, False, 0)
+
+        self.start_off_check = Gtk.CheckButton(label="Iniciar siempre desactivado")
+        self.start_off_check.set_active(bool(self.config.get("start_off", True)))
+        box.pack_start(self.start_off_check, False, False, 0)
+
         save = Gtk.Button(label="Guardar")
         save.connect("clicked", self._save)
         box.pack_start(save, False, False, 0)
 
         info = Gtk.Label(
-            label="Estados: Apagado (gris), Control activo (verde), Dictado activo (ámbar). Cambia desde el icono del panel o la hotkey.",
+            label="Estados: Apagado (gris), Control activo (verde), Dictado activo (ámbar). "
+                  "«escúchame» activa el control y «ensordece» lo desactiva; el despertar mantiene el micrófono activo.",
             xalign=0,
         )
         info.set_line_wrap(True)
@@ -592,6 +679,8 @@ La tecla rápida por defecto es <b>Super+Alt+V</b>.
         self.config["microphone_source"] = self.mic_entry.get_text().strip()
         self.config["show_notifications"] = self.notify_check.get_active()
         self.config["autostart"] = self.autostart_check.get_active()
+        self.config["wake_word_enabled"] = self.wake_check.get_active()
+        self.config["start_off"] = self.start_off_check.get_active()
         self._apply_autostart(self.config["autostart"])
         self.on_save(self.config)
         self.destroy()

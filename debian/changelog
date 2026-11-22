@@ -1,3 +1,10 @@
+control-voz (0.1.1) stable; urgency=medium
+
+  * Correcciones de voz aprendidas, ayuda dividida y activación por «escúchame».
+  * Iconos tricolores venezolanos y nueva imagen de social preview.
+
+ -- Angelino Santana (El Abuelazo Tech) <elabuelazotech@gmail.com>  Sun, 22 Nov 2026 13:18:19 +0000
+
 control-voz (0.1.0) stable; urgency=medium
 
   * Versión inicial con indicador de panel, control por voz y dictado.

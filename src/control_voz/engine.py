@@ -2,21 +2,23 @@ from __future__ import annotations
 
 import json
 import queue
-import re
 import subprocess
 import threading
-import unicodedata
 from dataclasses import dataclass
 from difflib import SequenceMatcher
 from typing import Callable
 
 from .actions import Command, run_command
-
-
-def _normalize_text(text: str) -> str:
-    text = unicodedata.normalize("NFKD", str(text).lower())
-    text = "".join(ch for ch in text if not unicodedata.combining(ch))
-    return re.sub(r"[^a-z0-9]+", " ", text).strip()
+from .corrections import (
+    add_correction,
+    apply_corrections,
+    apply_corrections_to_text,
+    load_corrections,
+    log_unknown,
+    normalize_text as _normalize_text,
+    parse_correction,
+)
+from .wake import SLEEP, WAKE, detect_wake
 
 
 def _similarity(a: str, b: str) -> float:
@@ -35,6 +37,8 @@ class VoiceEngine:
     def __init__(self, config: dict, on_event: Callable[[EngineEvent], None]):
         self.config = config
         self.on_event = on_event
+        self.corrections = load_corrections()
+        self.wake_word_enabled = bool(config.get("wake_word_enabled", True))
         self.state = config.get("state", "off")
         self._thread: threading.Thread | None = None
         self._stop = threading.Event()
@@ -45,6 +49,8 @@ class VoiceEngine:
         with self._lock:
             if self._thread and self._thread.is_alive():
                 return
+            self.corrections = load_corrections()
+            self.wake_word_enabled = bool(self.config.get("wake_word_enabled", True))
             self._stop.clear()
             self._thread = threading.Thread(target=self._run, daemon=True)
             self._thread.start()
@@ -93,6 +99,7 @@ class VoiceEngine:
         grammar = json.dumps(phrases, ensure_ascii=False)
         rec_cmd = KaldiRecognizer(model, 16000, grammar)
         rec_dict = KaldiRecognizer(model, 16000)
+        rec_wake = KaldiRecognizer(model, 16000) if self.wake_word_enabled else None
 
         source = self.config.get("microphone_source") or _default_source()
         cmd = [
@@ -117,6 +124,15 @@ class VoiceEngine:
             data = self._proc.stdout.read(4000)
             if not data:
                 break
+            if rec_wake is not None and rec_wake.AcceptWaveform(data):
+                heard = json.loads(rec_wake.Result()).get("text", "").strip()
+                kind = detect_wake(heard) if heard else None
+                if kind:
+                    rec_wake.Reset()
+                    rec_cmd.Reset()
+                    rec_dict.Reset()
+                    self._handle_wake(kind)
+                    continue
             if self.state == "off":
                 continue
             if self.state == "command":
@@ -138,7 +154,8 @@ class VoiceEngine:
                 if rec_dict.AcceptWaveform(data):
                     text = json.loads(rec_dict.Result()).get("text", "").strip()
                     if text:
-                        self._type_text(text + " ")
+                        corrected = apply_corrections_to_text(text, self.corrections)
+                        self._type_text(corrected + " ")
                 # if no final dictation, ignore partials
 
         try:
@@ -163,10 +180,23 @@ class VoiceEngine:
                 return True
         return False
 
+    def _handle_wake(self, kind: str) -> None:
+        self.set_state("command" if kind == WAKE else "off")
+        self.on_event(EngineEvent(kind))
+
+    def _handle_correction(self, text: str) -> bool:
+        parsed = parse_correction(text)
+        if parsed is None:
+            return False
+        wrong, right = parsed
+        self.corrections = add_correction(wrong, right)
+        self.on_event(EngineEvent("correction", f"{wrong} => {right}"))
+        return True
+
     def _handle_command(self, text: str, commands: list[Command]) -> bool:
-        if self._handle_mode_phrase(text):
+        if self._handle_mode_phrase(text) or self._handle_correction(text):
             return True
-        target = _normalize_text(text)
+        target = apply_corrections(_normalize_text(text), self.corrections)
         scored = sorted(
             ((_similarity(_normalize_text(cmd.phrase), target), cmd) for cmd in commands),
             key=lambda item: item[0],
@@ -182,16 +212,8 @@ class VoiceEngine:
                 self.set_state(result)
             self.on_event(EngineEvent("command", text))
             return True
-        self._log_unknown(text)
+        log_unknown(text)
         return False
-
-    @staticmethod
-    def _log_unknown(text: str) -> None:
-        try:
-            from .config import config_dir
-            (config_dir() / "no-reconocido.txt").write_text(text.strip() + "\n", encoding="utf-8")
-        except Exception:
-            pass
 
     def _type_text(self, text: str) -> None:
         try:
