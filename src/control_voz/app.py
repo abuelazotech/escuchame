@@ -37,7 +37,7 @@ def _acquire_single_instance() -> bool:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Control por voz para Linux Mint Cinnamon")
+    parser = argparse.ArgumentParser(description="Escúchame: control por voz para Linux Mint Cinnamon")
     parser.add_argument("--version", action="store_true", help="Mostrar versión")
     args = parser.parse_args()
     if args.version:
@@ -46,7 +46,7 @@ def main():
         return 0
 
     if not _acquire_single_instance():
-        print("Control por Voz ya está en ejecución.")
+        print("Escúchame ya está en ejecución.")
         return 0
 
     signal.signal(signal.SIGINT, signal.SIG_DFL)

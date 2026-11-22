@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 APP_ID = "control-voz"
-APP_NAME = "Control por Voz"
+APP_NAME = "Escúchame"
 DEFAULT_HOTKEY = "<Super><Alt>v"
 DEFAULT_MODEL = str(Path.home() / ".local/share/control-voz/modelos/vosk-model-small-es-0.42")
 

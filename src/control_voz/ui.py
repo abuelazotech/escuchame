@@ -693,7 +693,7 @@ class SettingsWindow(Gtk.Window):
         from pathlib import Path
         model_dir = str(Path(self.config.get("model_path", DEFAULT_MODEL)).parent)
         msg = (
-            "Control por Voz usa modelos Vosk sin conexión.\n\n"
+            "Escúchame usa modelos Vosk sin conexión.\n\n"
             "Descarga un modelo en español desde:\n"
             "https://alphacephei.com/vosk/models\n\n"
             f"Descomprímelo, por ejemplo, en:\n{model_dir}\n\n"
@@ -770,7 +770,7 @@ class SettingsWindow(Gtk.Window):
                 autostart.write_text(src.read_text(encoding="utf-8"), encoding="utf-8")
             else:
                 autostart.write_text(
-                    "[Desktop Entry]\nType=Application\nName=Control por Voz\nExec=control-voz\nIcon=control-voz\nX-GNOME-Autostart-enabled=true\n",
+                    "[Desktop Entry]\nType=Application\nName=Escúchame\nExec=control-voz\nIcon=control-voz\nX-GNOME-Autostart-enabled=true\n",
                     encoding="utf-8",
                 )
         elif autostart.exists():

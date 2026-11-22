@@ -12,7 +12,7 @@ Repositorio: https://github.com/abuelazotech/escuchame
 - **Control activo**: escucha frases y ejecuta comandos configurados.
 - **Dictado activo**: escribe el texto reconocido en la aplicación activa.
 
-El cambio de estado se hace desde el icono del panel o con la tecla rápida configurable (por defecto `Super+Alt+V`).
+El cambio de estado se hace desde el icono del panel, con la tecla rápida configurable (por defecto `Super+Alt+V`) o diciendo «escúchame» y «ensordece».
 
 ## Indicador de panel
 
@@ -38,9 +38,12 @@ control-voz
 La GUI permite:
 - Añadir/editar comandos de voz (frase, acción, valor).
 - Añadir palabras/frases al diccionario de reconocimiento.
+- Corregir frases mal reconocidas desde la pestaña **Correcciones**.
 - Cambiar modelo Vosk, hotkey y micrófono.
 
 Archivo de configuración: `~/.config/control-voz/config.json`.
+Correcciones: `~/.config/control-voz/correcciones.txt`.
+Frases no reconocidas: `~/.config/control-voz/no-reconocido.txt`.
 
 ## Empaquetado
 

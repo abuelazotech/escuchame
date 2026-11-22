@@ -1,6 +1,6 @@
 [Desktop Entry]
-Name=Control por Voz
-Comment=Control por voz y dictado para Linux Mint
+Name=Escúchame
+Comment=Control por voz y dictado para Linux Mint Cinnamon
 Exec=control-voz
 Icon=control-voz
 Terminal=false
