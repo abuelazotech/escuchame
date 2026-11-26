@@ -4,9 +4,9 @@
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>MIT</project_license>
   <name>Escúchame</name>
-  <summary>Control por voz y dictado para Linux Mint Cinnamon</summary>
+  <summary>Escúchame: dictado y control por voz para Linux Mint Cinnamon</summary>
   <description>
-    <p>Aplicación con indicador en la bandeja del panel para activar control por voz, dictado o apagar el micrófono.</p>
+    <p>Escúchame: aplicación con indicador en la bandeja del panel para activar el dictado, los comandos por voz o apagar el micrófono.</p>
   </description>
   <developer id="com.elabuelazotech">
     <name>Angelino Santana (El Abuelazo Tech)</name>

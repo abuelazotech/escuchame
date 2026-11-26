@@ -39,7 +39,7 @@ Architecture: all
 Depends: python3, python3-gi, gir1.2-gtk-3.0, gir1.2-xapp-1.0, gir1.2-keybinder-3.0, xdotool, pulseaudio-utils
 Recommends: python3-vosk
 Maintainer: Angelino Santana (El Abuelazo Tech) <elabuelazotech@gmail.com>
-Description: Control por voz y dictado para Linux Mint Cinnamon
+Description: Escúchame: dictado y control por voz para Linux Mint Cinnamon
  Aplicación con indicador de panel para comandos de voz y dictado.
  Permite cambiar entre apagado, control y dictado, y configurar comandos.
 CTRL

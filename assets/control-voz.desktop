@@ -1,8 +1,8 @@
 [Desktop Entry]
 Name=Escúchame
-Comment=Control por voz y dictado para Linux Mint Cinnamon
+Comment=Escúchame: dictado y control por voz para Linux Mint Cinnamon
 Exec=control-voz
-Icon=control-voz
+Icon=escuchame
 Terminal=false
 Type=Application
 Categories=Utility;
